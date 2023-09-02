@@ -62,7 +62,21 @@ if (isset($_GET['delete'])) {
 }
 
 $data = json_decode(file_get_contents("./actions.json"), true);
-$max_entries = min(count($data['inside_new_full_dups']), 20);
+
+// Check for the selected area
+$selected_area = 'inside_new_full_dups'; // Default
+if (isset($_COOKIE['selected_area']) && array_key_exists($_COOKIE['selected_area'], $data)) {
+    $selected_area = $_COOKIE['selected_area'];
+}
+
+// If a new area is selected
+if (isset($_POST['data_area']) && array_key_exists($_POST['data_area'], $data)) {
+    $selected_area = $_POST['data_area'];
+    setcookie('selected_area', $selected_area, time() + (86400 * 30), "/"); // 86400 = 1 day
+}
+
+$max_entries = min(count($data[$selected_area]), 20);
+
 
 ?>
 
@@ -78,26 +92,34 @@ $max_entries = min(count($data['inside_new_full_dups']), 20);
     </style>
 </head>
 <body>
+<form method="post" action="">
+    <select name="data_area" onchange="this.form.submit();">
+        <?php foreach ($data as $key => $value): ?>
+            <option value="<?= $key ?>" <?= $key == $selected_area ? 'selected' : '' ?>><?= $key ?></option>
+        <?php endforeach; ?>
+    </select>
+</form>
+
 <div id="duplicatesContainer">
     <?php for ($i = 0; $i < $max_entries; $i++):
-      $item = $data["inside_new_full_dups"][$i];
+      $item = $data[$selected_area][$i];
       $o = $item["original"];
-      $dup = array_merge($item["from"], $item["dup"]);
+      $d = array_merge($item["from"], $item["dup"]);
 
       $originalPath = $o["real_path"];
-      $dupPath = $dup["real_path"];
+      $dupPath = $d["real_path"];
 
       $originalSize = filesize($originalPath);
       $dupSize = filesize($dupPath);
 
-      $displayOriginalPath = str_replace("\\", "<br />", $originalPath);
-      $displayDupPath = str_replace("\\", "<br />", $dupPath);
+      $displayOriginalPath = str_replace("/", "<br />", $o['full_path']);
+      $displayDupPath = str_replace("/", "<br />", $d['full_path']);
 
       $originalImgHeight = 200 * $o["height"] / $o["width"];
       if (!$originalImgHeight) {
         $originalImgHeight = 100;
       }
-      $dupImgHeight = 200 * $dup["height"] / $dup["width"];
+      $dupImgHeight = 200 * $d["height"] / $d["width"];
       if (!($dupImgHeight > 0)) {
         $dupImgHeight = $originalImgHeight;
       }
@@ -106,7 +128,7 @@ $max_entries = min(count($data['inside_new_full_dups']), 20);
       $dupImageDetails = getimagesize($dupPath);
 
       $originalImgUrl = transformPathToURL($o["real_path"]);
-      $dupImgUrl = transformPathToURL($dup["real_path"]);
+      $dupImgUrl = transformPathToURL($d["real_path"]);
     ?>
         <div style="clear:both;">
           <div style="float: left; width: 20px; height: 100px; background-color: red">1</div>
@@ -121,8 +143,8 @@ $max_entries = min(count($data['inside_new_full_dups']), 20);
           <div style="float: left; width: 300px;">
             <img src="<?= $dupImgUrl ?>" border="1" style="width: 200px; height: <?= $dupImgHeight ?>px;">
             <p>
-              <?= $dup["width"] ?>x<?= $dup["height"] ?><br />
-              <?= $dup["size"] ?><br />
+              <?= $d["width"] ?>x<?= $d["height"] ?><br />
+              <?= $d["size"] ?><br />
               <?= $displayDupPath ?>
             </p>
 
