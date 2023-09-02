@@ -89,10 +89,11 @@ $max_entries = min(count($data[$selected_area]), 20);
         div {
             margin-bottom: 20px;
         }
-        #duplicatesContainer > div {
-            clear: both;
+        .clear {
+          clear: both;
         }
-        #duplicatesContainer > div > div {
+
+        #duplicatesContainer .imageContainer {
             float: left;
             width: 300px;
         }
@@ -101,9 +102,16 @@ $max_entries = min(count($data[$selected_area]), 20);
             width: 200px;
         }
         #duplicatesContainer .marker {
+          float: left;
             width: 20px;
             height: 100px;
             background-color: red;
+
+        }
+        .item {
+          clear: both;
+            border: 10px solid #eee;
+            padding: 10px;
         }
     </style>
 </head>
@@ -146,9 +154,9 @@ $max_entries = min(count($data[$selected_area]), 20);
       $originalImgUrl = transformPathToURL($o["real_path"]);
       $dupImgUrl = transformPathToURL($d["real_path"]);
     ?>
-        <div>
+        <div class="item">
           <div class="marker"></div>
-          <div>
+          <div class="imageContainer">
             <img src="<?= $originalImgUrl ?>" style="height: <?= $originalImgHeight ?>px;">
             <p>
               <?= $o["width"] ?>x<?= $o["height"] ?><br />
@@ -156,7 +164,7 @@ $max_entries = min(count($data[$selected_area]), 20);
               <?= $displayOriginalPath ?>
             </p>
           </div>
-          <div>
+          <div class="imageContainer">
             <img src="<?= $dupImgUrl ?>" style="height: <?= $dupImgHeight ?>px;">
             <p>
               <?= $d["width"] ?>x<?= $d["height"] ?><br />
@@ -165,6 +173,7 @@ $max_entries = min(count($data[$selected_area]), 20);
             </p>
           </div>
           <a href="?delete=<?= urlencode($item["dup"]["real_path"]) ?>">Delete Duplicate</a>
+          <div class="clear"></div>
         </div>
     <?php endfor; ?>
 </div>
