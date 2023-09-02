@@ -86,50 +86,57 @@ $max_entries = min(count($data[$selected_area]), 20);
     <meta charset="UTF-8">
     <title>Duplicate Remover</title>
     <style>
-        div {
+        div.item {
             margin-bottom: 20px;
+            border: 2px solid #eee;
+            padding: 10px;
         }
         .clear {
           clear: both;
         }
-
         #duplicatesContainer .imageContainer {
             float: left;
             width: 300px;
         }
         #duplicatesContainer img {
-            border: 1px solid;
+            border: 1px solid #555;
+            border-bottom-width: 5px;
             width: 200px;
         }
-        #duplicatesContainer .marker {
-          float: left;
-            width: 20px;
-            height: 100px;
-            background-color: red;
+        #duplicatesContainer .remove-dup .dup img,
+        #duplicatesContainer .remove-original .original img {
+            border-bottom: 5px solid #f00;
+        }
+        #duplicatesContainer .remove-dup .original img,
+                #duplicatesContainer .remove-original .dup img {
+                    border-bottom: 5px solid transparent;
+                }
 
-        }
-        div.item {
-          clear: both;
-            border: 10px solid #eee;
-            padding: 10px;
-        }
         div.current {
-            border-color: #ff0000;
+            border-color: #eeffee;
+            background-color: #eeffee;
         }
+        div.remove-dup {
 
+        }
+        div.remove-original {
 
+        }
     </style>
     <script>
             document.addEventListener("DOMContentLoaded", function() {
                 let items = document.querySelectorAll('.item');
                 let currentIndex = 0;
-                let actions = ['Delete Duplicate', 'Delete Original'];
-                let currentAction = 0;
+                let actionClasses = ['remove-original', 'remove-dup'];
+                let actions = ['Delete Original', 'Delete Duplicate'];
+                let currentAction = 1;
 
                 function updateCurrentItem() {
                     items.forEach((item, index) => {
                         if (index === currentIndex) {
                             item.classList.add('current');
+                            item.classList.remove(...actionClasses);
+                            item.classList.add(actionClasses[currentAction]);
                             item.querySelector('.action').textContent = actions[currentAction];
                         } else {
                             item.classList.remove('current');
@@ -156,7 +163,7 @@ $max_entries = min(count($data[$selected_area]), 20);
                                 e.preventDefault();
                                 break;
                             case 39: // right arrow
-                                if (currentAction < actions.length - 1) currentAction++;
+                                if (currentAction < actionClasses.length - 1) currentAction++;
                                 updateCurrentItem();
                                 e.preventDefault();
                                 break;
@@ -209,7 +216,7 @@ $max_entries = min(count($data[$selected_area]), 20);
     ?>
         <div class="item remove-dup">
           <!-- div class="marker"></div -->
-          <div class="imageContainer">
+          <div class="imageContainer original">
             <img src="<?= $originalImgUrl ?>" style="height: <?= $originalImgHeight ?>px;">
             <p>
               <?= $o["width"] ?>x<?= $o["height"] ?><br />
@@ -217,7 +224,7 @@ $max_entries = min(count($data[$selected_area]), 20);
               <?= $displayOriginalPath ?>
             </p>
           </div>
-          <div class="imageContainer">
+          <div class="imageContainer dup">
             <img src="<?= $dupImgUrl ?>" style="height: <?= $dupImgHeight ?>px;">
             <p>
               <?= $d["width"] ?>x<?= $d["height"] ?><br />
