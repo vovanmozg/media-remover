@@ -89,6 +89,22 @@ $max_entries = min(count($data[$selected_area]), 20);
         div {
             margin-bottom: 20px;
         }
+        #duplicatesContainer > div {
+            clear: both;
+        }
+        #duplicatesContainer > div > div {
+            float: left;
+            width: 300px;
+        }
+        #duplicatesContainer img {
+            border: 1px solid;
+            width: 200px;
+        }
+        #duplicatesContainer .marker {
+            width: 20px;
+            height: 100px;
+            background-color: red;
+        }
     </style>
 </head>
 <body>
@@ -130,24 +146,23 @@ $max_entries = min(count($data[$selected_area]), 20);
       $originalImgUrl = transformPathToURL($o["real_path"]);
       $dupImgUrl = transformPathToURL($d["real_path"]);
     ?>
-        <div style="clear:both;">
-          <div style="float: left; width: 20px; height: 100px; background-color: red">1</div>
-          <div style="float: left; width: 300px;">
-            <img src="<?= $originalImgUrl ?>" border="1" style="width: 200px; height: <?= $originalImgHeight ?>px;">
+        <div>
+          <div class="marker"></div>
+          <div>
+            <img src="<?= $originalImgUrl ?>" style="height: <?= $originalImgHeight ?>px;">
             <p>
               <?= $o["width"] ?>x<?= $o["height"] ?><br />
               <?= $o["size"] ?><br />
               <?= $displayOriginalPath ?>
             </p>
           </div>
-          <div style="float: left; width: 300px;">
-            <img src="<?= $dupImgUrl ?>" border="1" style="width: 200px; height: <?= $dupImgHeight ?>px;">
+          <div>
+            <img src="<?= $dupImgUrl ?>" style="height: <?= $dupImgHeight ?>px;">
             <p>
               <?= $d["width"] ?>x<?= $d["height"] ?><br />
               <?= $d["size"] ?><br />
               <?= $displayDupPath ?>
             </p>
-
           </div>
           <a href="?delete=<?= urlencode($item["dup"]["real_path"]) ?>">Delete Duplicate</a>
         </div>
