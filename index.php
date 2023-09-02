@@ -108,12 +108,65 @@ $max_entries = min(count($data[$selected_area]), 20);
             background-color: red;
 
         }
-        .item {
+        div.item {
           clear: both;
             border: 10px solid #eee;
             padding: 10px;
         }
+        div.current {
+            border-color: #ff0000;
+        }
+
+
     </style>
+    <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                let items = document.querySelectorAll('.item');
+                let currentIndex = 0;
+                let actions = ['Delete Duplicate', 'Delete Original'];
+                let currentAction = 0;
+
+                function updateCurrentItem() {
+                    items.forEach((item, index) => {
+                        if (index === currentIndex) {
+                            item.classList.add('current');
+                            item.querySelector('.action').textContent = actions[currentAction];
+                        } else {
+                            item.classList.remove('current');
+                        }
+                    });
+                }
+
+                document.addEventListener('keydown', function(e) {
+                    if (e.ctrlKey) {
+                        switch (e.keyCode) {
+                            case 38: // up arrow
+                                if (currentIndex > 0) currentIndex--;
+                                updateCurrentItem();
+                                e.preventDefault();
+                                break;
+                            case 40: // down arrow
+                                if (currentIndex < items.length - 1) currentIndex++;
+                                updateCurrentItem();
+                                e.preventDefault();
+                                break;
+                            case 37: // left arrow
+                                if (currentAction > 0) currentAction--;
+                                updateCurrentItem();
+                                e.preventDefault();
+                                break;
+                            case 39: // right arrow
+                                if (currentAction < actions.length - 1) currentAction++;
+                                updateCurrentItem();
+                                e.preventDefault();
+                                break;
+                        }
+                    }
+                });
+
+                updateCurrentItem();
+            });
+        </script>
 </head>
 <body>
 <form method="post" action="">
@@ -154,8 +207,8 @@ $max_entries = min(count($data[$selected_area]), 20);
       $originalImgUrl = transformPathToURL($o["real_path"]);
       $dupImgUrl = transformPathToURL($d["real_path"]);
     ?>
-        <div class="item">
-          <div class="marker"></div>
+        <div class="item remove-dup">
+          <!-- div class="marker"></div -->
           <div class="imageContainer">
             <img src="<?= $originalImgUrl ?>" style="height: <?= $originalImgHeight ?>px;">
             <p>
@@ -172,10 +225,11 @@ $max_entries = min(count($data[$selected_area]), 20);
               <?= $displayDupPath ?>
             </p>
           </div>
-          <a href="?delete=<?= urlencode($item["dup"]["real_path"]) ?>">Delete Duplicate</a>
+          <div class="action">Delete Duplicate</div>
           <div class="clear"></div>
         </div>
     <?php endfor; ?>
 </div>
 </body>
 </html>
+
