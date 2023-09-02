@@ -1,13 +1,11 @@
 <?php
-
-define(WIN_DIR, "F:\\media");
-define(LINUX_DIR, "/mnt/media");
+define('WIN_DIR', "F:\\media");
+define('LINUX_DIR', "/mnt/media");
 
 ini_set('memory_limit', '256M');
 
 function transformPathToURL($path) {
-    $baseDir = WIN_DIR;
-    return str_replace('\\', '/', str_replace($baseDir, 'http://localhost:8000/?image=', $path));
+    return str_replace('\\', '/', str_replace(WIN_DIR, 'http://localhost:8000/?image=', $path));
 }
 
 function handleFileDeletion($path) {
@@ -54,15 +52,18 @@ function handleImageDisplay($path) {
     }
 }
 
-$data = json_decode(file_get_contents("./actions.json"), true);
-$max_entries = min(count($data['inside_new_full_dups']), 20);
 
 if (isset($_GET['delete'])) {
     echo handleFileDeletion($_GET['delete']);
+    exit;
 } elseif (isset($_GET['image'])) {
     handleImageDisplay($_GET['image']);
     exit;
 }
+
+$data = json_decode(file_get_contents("./actions.json"), true);
+$max_entries = min(count($data['inside_new_full_dups']), 20);
+
 ?>
 
 <!DOCTYPE html>
@@ -77,14 +78,13 @@ if (isset($_GET['delete'])) {
     </style>
 </head>
 <body>
-
 <div id="duplicatesContainer">
     <?php for ($i = 0; $i < $max_entries; $i++):
       $item = $data["inside_new_full_dups"][$i];
-      $original = $item["original"];
+      $o = $item["original"];
       $dup = array_merge($item["from"], $item["dup"]);
 
-      $originalPath = $original["real_path"];
+      $originalPath = $o["real_path"];
       $dupPath = $dup["real_path"];
 
       $originalSize = filesize($originalPath);
@@ -93,7 +93,7 @@ if (isset($_GET['delete'])) {
       $displayOriginalPath = str_replace("\\", "<br />", $originalPath);
       $displayDupPath = str_replace("\\", "<br />", $dupPath);
 
-      $originalImgHeight = 200 * $original["height"] / $original["width"];
+      $originalImgHeight = 200 * $o["height"] / $o["width"];
       if (!$originalImgHeight) {
         $originalImgHeight = 100;
       }
@@ -104,19 +104,22 @@ if (isset($_GET['delete'])) {
 
       $originalImageDetails = getimagesize($originalPath);
       $dupImageDetails = getimagesize($dupPath);
+
+      $originalImgUrl = transformPathToURL($o["real_path"]);
+      $dupImgUrl = transformPathToURL($dup["real_path"]);
     ?>
         <div style="clear:both;">
           <div style="float: left; width: 20px; height: 100px; background-color: red">1</div>
           <div style="float: left; width: 300px;">
-            <img src="<?= transformPathToURL($original["real_path"]) ?>" border="1" style="width: 200px; height: <?= $originalImgHeight ?>px;">
+            <img src="<?= $originalImgUrl ?>" border="1" style="width: 200px; height: <?= $originalImgHeight ?>px;">
             <p>
-              <?= $original["width"] ?>x<?= $original["height"] ?><br />
-              <?= $original["size"] ?><br />
+              <?= $o["width"] ?>x<?= $o["height"] ?><br />
+              <?= $o["size"] ?><br />
               <?= $displayOriginalPath ?>
             </p>
           </div>
           <div style="float: left; width: 300px;">
-            <img src="<?= transformPathToURL($item["dup"]["real_path"]) ?>" border="1" style="width: 200px; height: <?= $dupImgHeight ?>px;">
+            <img src="<?= $dupImgUrl ?>" border="1" style="width: 200px; height: <?= $dupImgHeight ?>px;">
             <p>
               <?= $dup["width"] ?>x<?= $dup["height"] ?><br />
               <?= $dup["size"] ?><br />
@@ -128,6 +131,5 @@ if (isset($_GET['delete'])) {
         </div>
     <?php endfor; ?>
 </div>
-
 </body>
 </html>
