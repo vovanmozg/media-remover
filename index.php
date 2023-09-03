@@ -16,6 +16,8 @@ function handleFileDeletion($path, $type, $destination = 'removed') {
       $destinationDir = '/mnt/media/removed';
     } elseif ($destination == 'archive') {
       $destinationDir = '/mnt/media/archive';
+    } elseif ($destination == 'nofoto') {
+      $destinationDir = '/mnt/media/new-nofoto';
     } else {
       return "Invalid destination: " . $destination . "<br>";
     }
@@ -125,6 +127,17 @@ if (isset($_POST['imageAction']) && is_array($_POST['imageAction'])) {
         $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['dup']['real_path']));
         $results[] = handleFileDeletion($linuxPath, 'dup', 'archive');
         break;
+      case 'skip':
+        $results[] = "Skipped " . $item['original']['real_path'] . "<br>";
+        break;
+      case 'remove-dup-nofoto':
+        // remove dup
+        // move original to nofoto directory
+        $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['original']['real_path']));
+        $results[] = handleFileDeletion($linuxPath, 'original', 'nofoto');
+        $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['dup']['real_path']));
+        $results[] = handleFileDeletion($linuxPath, 'dup');
+        break;
       default:
         echo "No action specified for " . $linuxPath . "<br>";
         break;
@@ -212,7 +225,7 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
             let items = document.querySelectorAll('.item');
             let currentIndex = 0;
 
-            let actions = ['remove-original', 'remove-dup', 'remove-both', 'archive-both'];
+            let actions = ['remove-original', 'remove-dup', 'remove-both', 'archive-both', 'skip', 'remove-dup-nofoto'];
             //let currentAction = 1;
 
             // Update the hidden input value when action changes
@@ -252,6 +265,17 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
                 });
             }
 
+            function selectActionByActionType(actionType) {
+                items.forEach((item, index) => {
+                    if (index === currentIndex) {
+                        item.querySelector('input[type="hidden"]').value = actionType;
+                        item.querySelector('.action').innerHTML = actionType;
+                        item.classList.remove(...actions);
+                        item.classList.add(actionType);
+                    }
+                });
+            }
+
             document.addEventListener('keydown', function(e) {
                 if (e.ctrlKey) {
                     switch (e.keyCode) {
@@ -275,8 +299,36 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
                             selectAction(1);
                             e.preventDefault();
                             break;
+
                     }
-                };
+                } else {
+                    switch (e.keyCode) {
+                        case 79: // o
+                            selectActionByActionType('remove-original');
+                            e.preventDefault();
+                            break;
+                        case 68: // d
+                            selectActionByActionType('remove-dup');
+                            e.preventDefault();
+                            break;
+                        case 66: // b
+                            selectActionByActionType('remove-both');
+                            e.preventDefault();
+                            break;
+                        case 65: // a
+                            selectActionByActionType('archive-both');
+                            e.preventDefault();
+                            break;
+                        case 83: // s
+                            selectActionByActionType('skip');
+                            e.preventDefault();
+                            return;
+                        case 78: // n
+                            selectActionByActionType('remove-dup-nofoto');
+                            e.preventDefault();
+                            return;
+                    }
+                }
             });
             // processing mouse clicks
             items.forEach((item, index) => {
@@ -422,7 +474,12 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
   </div>
 </form>
 
-<div id="results">
+<div style="padding-top: 2em">
+  <p>CTRL + Up/Down - select image</p>
+  <p>CTRL + Left/Right - change action</p>
+</div>
+
+<div id="results" style="padding-top: 2em">
   <?php foreach ($results as $result): ?>
     <?= $result ?>
   <?php endforeach; ?>
