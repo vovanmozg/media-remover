@@ -1,6 +1,9 @@
 <?php
 define('WIN_DIR', "F:\\media");
 define('LINUX_DIR', "/mnt/media");
+define('PAGE_COUNT', 20);
+define('DEFAULT_THUMB_WIDTH', 200);
+define('SMALLER_THUMB_RATIO', 0.8);
 
 ini_set('memory_limit', '256M');
 
@@ -9,30 +12,48 @@ function transformPathToURL($path) {
 }
 
 function handleFileDeletion($path) {
-    return;
-    if (file_exists($path)) {
-        unlink($path);
-        return "<script>alert('Deleted: " . $path . "');</script>";
+    $destinationDir = '/mnt/media/removed';
+
+    // Получаем путь, который нужно сохранить
+    $relativePath = str_replace(LINUX_DIR, '', $path);
+    $destinationPath = $destinationDir . $relativePath;
+
+    // Проверяем, существует ли каталог назначения, и создаем его, если он отсутствует
+    $destinationFolder = dirname($destinationPath);
+    if (!is_dir($destinationFolder)) {
+        mkdir($destinationFolder, 0755, true); // true для рекурсивного создания каталогов
     }
-    return "<script>alert('Error deleting: " . $path . "');</script>";
+
+    if (!file_exists($path)) {
+      echo "File does not exist: " . $path . ", destination:" . $destinationPath . "<br>";
+    }
+
+    echo "Moved: " . $path . ", destination:" . $destinationPath . "<br>";
+        if (rename($path, $destinationPath)) {
+            echo "Moved: " . $path . " to " . $destinationPath;
+        } else {
+            echo "Error moving: " . $path . " to " . $destinationPath;
+        }
+
 }
 
 function handleImageDisplay($path) {
     $fullPath = LINUX_DIR . "/" . $path;
     $cachePath = './cache/' . md5($path) . '.jpg';
 
-    if (file_exists($cachePath)) {
-        header("Content-type: image/jpeg");
+    if (file_exists($cachePath) && file_exists($fullPath)) {
+      header("Content-type: image/jpeg");
         readfile($cachePath);
         return;
     }
+
 
     if (file_exists($fullPath)) {
         $image = imagecreatefromjpeg($fullPath);
         $width = imagesx($image);
         $height = imagesy($image);
 
-        $new_width = 200;
+        $new_width = DEFAULT_THUMB_WIDTH;
         $new_height = floor($height * ($new_width / $width));
 
         $tmp_img = imagecreatetruecolor($new_width, $new_height);
@@ -52,16 +73,49 @@ function handleImageDisplay($path) {
     }
 }
 
+function findItemByTo($data, $to) {
+    foreach ($data as $key => $value) {
+        foreach ($value as $item) {
+            if ($item['to'] == $to) {
+                return $item;
+            }
+        }
+    }
+    return null;
+}
 
-if (isset($_GET['delete'])) {
-    echo handleFileDeletion($_GET['delete']);
-    exit;
-} elseif (isset($_GET['image'])) {
+if (isset($_GET['image'])) {
     handleImageDisplay($_GET['image']);
     exit;
 }
 
 $data = json_decode(file_get_contents("./actions.json"), true);
+
+// Check if imageAction is set in POST data
+if (isset($_POST['imageAction']) && is_array($_POST['imageAction'])) {
+  $processingActions = $_POST['imageAction'];
+
+  // Iterate through each image and its action
+  foreach ($processingActions as $to => $action) {
+    $item = findItemByTo($data, $to);
+
+    switch ($action) {
+      case 'remove-original':
+        $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['original']['real_path']));
+        $result = handleFileDeletion($linuxPath);
+        //                  echo $result . "<br>";
+        break;
+      case 'remove-dup':
+        $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['dup']['real_path']));
+        $result = handleFileDeletion($linuxPath);
+//                  echo $result . "<br>";
+        break;
+      default:
+        echo "No action specified for " . $linuxPath . "<br>";
+        break;
+    }
+  }
+}
 
 // Check for the selected area
 $selected_area = 'inside_new_full_dups'; // Default
@@ -75,7 +129,7 @@ if (isset($_POST['data_area']) && array_key_exists($_POST['data_area'], $data)) 
     setcookie('selected_area', $selected_area, time() + (86400 * 30), "/"); // 86400 = 1 day
 }
 
-$max_entries = min(count($data[$selected_area]), 20);
+$max_entries = min(count($data[$selected_area]), PAGE_COUNT);
 
 
 ?>
@@ -94,17 +148,23 @@ $max_entries = min(count($data[$selected_area]), 20);
         .clear {
           clear: both;
         }
-        #duplicatesContainer .imageContainer {
+        #duplicatesContainer .infoContainer {
             float: left;
             width: 300px;
         }
         #duplicatesContainer img {
             border: 1px solid #555;
             border-bottom-width: 5px;
-            width: 200px;
+            width: <?= DEFAULT_THUMB_WIDTH ?>px;
+            float: left;
+        }
+        #duplicatesContainer img.smaller {
+            width: <?= DEFAULT_THUMB_WIDTH * SMALLER_THUMB_RATIO ?>px;
         }
         #duplicatesContainer .remove-dup .dup img,
-        #duplicatesContainer .remove-original .original img {
+        #duplicatesContainer .remove-original .original img,
+        #duplicatesContainer .remove-both .original img,
+        #duplicatesContainer .remove-both .dup img {
             border-bottom: 5px solid #f00;
         }
         #duplicatesContainer .remove-dup .original img,
@@ -122,58 +182,86 @@ $max_entries = min(count($data[$selected_area]), 20);
         div.remove-original {
 
         }
+
+        div.marker {
+          border: 1px solid #000;
+          width: 20px;
+          float: left;
+        }
     </style>
     <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                let items = document.querySelectorAll('.item');
-                let currentIndex = 0;
-                let actionClasses = ['remove-original', 'remove-dup'];
-                let actions = ['Delete Original', 'Delete Duplicate'];
-                let currentAction = 1;
+        document.addEventListener("DOMContentLoaded", function() {
+            let items = document.querySelectorAll('.item');
+            let currentIndex = 0;
 
-                function updateCurrentItem() {
-                    items.forEach((item, index) => {
-                        if (index === currentIndex) {
-                            item.classList.add('current');
-                            item.classList.remove(...actionClasses);
-                            item.classList.add(actionClasses[currentAction]);
-                            item.querySelector('.action').textContent = actions[currentAction];
-                        } else {
-                            item.classList.remove('current');
-                        }
-                    });
-                }
+            let actions = ['remove-original', 'remove-dup', 'remove-both'];
+            //let currentAction = 1;
 
-                document.addEventListener('keydown', function(e) {
-                    if (e.ctrlKey) {
-                        switch (e.keyCode) {
-                            case 38: // up arrow
-                                if (currentIndex > 0) currentIndex--;
-                                updateCurrentItem();
-                                e.preventDefault();
-                                break;
-                            case 40: // down arrow
-                                if (currentIndex < items.length - 1) currentIndex++;
-                                updateCurrentItem();
-                                e.preventDefault();
-                                break;
-                            case 37: // left arrow
-                                if (currentAction > 0) currentAction--;
-                                updateCurrentItem();
-                                e.preventDefault();
-                                break;
-                            case 39: // right arrow
-                                if (currentAction < actionClasses.length - 1) currentAction++;
-                                updateCurrentItem();
-                                e.preventDefault();
-                                break;
-                        }
+            // Update the hidden input value when action changes
+//             function updateActionInput() {
+//                 items[currentIndex].querySelector('input[type="hidden"]').value = actions[currentAction];
+//             }
+
+            function selectCurrentItem() {
+                items.forEach((item, index) => {
+                    if (index === currentIndex) {
+                        item.classList.add('current');
+                        item.scrollIntoView({ behavior: 'instant', block: 'center' });
+                    } else {
+                        item.classList.remove('current');
                     }
                 });
+            }
 
-                updateCurrentItem();
+            function selectAction(direction) {
+                items.forEach((item, index) => {
+                    if (index === currentIndex) {
+                        let currentAction = actions.indexOf(item.querySelector('input[type="hidden"]').value);
+
+                        if (direction === 1 && currentAction < actions.length - 1) {
+                            currentAction++;
+                        } else if (direction === -1 && currentAction > 0) {
+                            currentAction--;
+                        } else {
+                            return;
+                        }
+
+                        item.querySelector('input[type="hidden"]').value = actions[currentAction];
+                        item.querySelector('.action').innerHTML = actions[currentAction];
+                        item.classList.remove(...actions);
+                        item.classList.add(actions[currentAction]);
+                    }
+                });
+            }
+
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey) {
+                    switch (e.keyCode) {
+                        case 38: // up arrow
+                            if (currentIndex > 0) currentIndex--;
+                            selectCurrentItem();
+                            e.preventDefault();
+                            return;
+                        case 40: // down arrow
+                            if (currentIndex < items.length - 1) currentIndex++;
+                            selectCurrentItem();
+                            e.preventDefault();
+                            return;
+                        case 37: // left arrow
+                            //if (currentAction > 0) currentAction--;
+                            selectAction(-1);
+                            e.preventDefault();
+                            break;
+                        case 39: // right arrow
+                            //if (currentAction < actions.length - 1) currentAction++;
+                            selectAction(1);
+                            e.preventDefault();
+                            break;
+                    }
+                };
             });
-        </script>
+        });
+    </script>
 </head>
 <body>
 <form method="post" action="">
@@ -184,8 +272,27 @@ $max_entries = min(count($data[$selected_area]), 20);
     </select>
 </form>
 
-<div id="duplicatesContainer">
-    <?php for ($i = 0; $i < $max_entries; $i++):
+<form method="post" action="" id="imageActionsForm">
+  <div id="duplicatesContainer">
+    <?php
+
+    $allIterator = 0;
+    $displayIterator = 0;
+    while (true) {
+//       echo "alliterator: $allIterator, datalen: " . count($data[$selected_area]) . "<br>";
+//       echo "displayIterator: $displayIterator, max_entries: $max_entries<br>";
+      if ($allIterator >= count($data[$selected_area])) {
+
+        break;
+      }
+
+      if ($displayIterator >= $max_entries) {
+
+        break;
+      }
+
+      $i = $allIterator;
+
       $item = $data[$selected_area][$i];
       $o = $item["original"];
       $d = array_merge($item["from"], $item["dup"]);
@@ -193,19 +300,47 @@ $max_entries = min(count($data[$selected_area]), 20);
       $originalPath = $o["real_path"];
       $dupPath = $d["real_path"];
 
+      $linuxOriginalPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $originalPath));
+//       $cacheOriginalPath = './cache/' . md5($linuxOriginalPath) . '.jpg';
+      $linuxDupPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $dupPath));
+//       $cacheDupPath = './cache/' . md5($linuxDupPath) . '.jpg';
+
+      $oExists = file_exists($linuxOriginalPath);
+      $dExists = file_exists($linuxDupPath);
+
+      if (!$oExists || !$dExists) {
+          $allIterator++;
+          continue;
+      }
+      $linuxDupPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $dupPath));
+
+
       $originalSize = filesize($originalPath);
       $dupSize = filesize($dupPath);
 
       $displayOriginalPath = str_replace("/", "<br />", $o['full_path']);
       $displayDupPath = str_replace("/", "<br />", $d['full_path']);
 
-      $originalImgHeight = 200 * $o["height"] / $o["width"];
+      $originalImgHeight = DEFAULT_THUMB_WIDTH * $o["height"] / $o["width"];
       if (!$originalImgHeight) {
-        $originalImgHeight = 100;
+        $originalImgHeight = DEFAULT_THUMB_WIDTH / 2;
       }
-      $dupImgHeight = 200 * $d["height"] / $d["width"];
+      $dupImgHeight = DEFAULT_THUMB_WIDTH * $d["height"] / $d["width"];
       if (!($dupImgHeight > 0)) {
         $dupImgHeight = $originalImgHeight;
+      }
+
+      if ($o["width"] > $d["width"]) {
+        $imgDupClass = "smaller";
+        $imgOriginalClass = "";
+        $dupImgHeight *= SMALLER_THUMB_RATIO;
+      } elseif ($o["width"] < $d["width"]) {
+        $imgOriginalClass = "smaller";
+        $imgDupClass = "";
+        $originalImgHeight *= SMALLER_THUMB_RATIO;
+      } else {
+        $imgOriginalClass = "";
+        $imgDupClass = "";
       }
 
       $originalImageDetails = getimagesize($originalPath);
@@ -213,30 +348,54 @@ $max_entries = min(count($data[$selected_area]), 20);
 
       $originalImgUrl = transformPathToURL($o["real_path"]);
       $dupImgUrl = transformPathToURL($d["real_path"]);
+
+      $originalPath = $o["real_path"];
+      $fullPathKey = urlencode($originalPath); // URL-encode to ensure valid HTML
+
+      $originalHeavierSameResolution = $o["width"] == $d["width"] && $o["height"] == $d["height"] && $o["size"] > $d["size"];
+      $dupHeavierSameResolution = $o["width"] == $d["width"] && $o["height"] == $d["height"] && $d["size"] > $o["size"];
+
+
+      $displayIterator++;
+      $allIterator++;
     ?>
-        <div class="item remove-dup">
-          <!-- div class="marker"></div -->
-          <div class="imageContainer original">
-            <img src="<?= $originalImgUrl ?>" style="height: <?= $originalImgHeight ?>px;">
-            <p>
-              <?= $o["width"] ?>x<?= $o["height"] ?><br />
-              <?= $o["size"] ?><br />
-              <?= $displayOriginalPath ?>
-            </p>
+      <div class="item remove-dup">
+        <div class="infoContainer original">
+          <div class="imageContainer">
+            <img src="<?= $originalImgUrl ?>" class="<?= $imgOriginalClass ?>" style="height: <?= $originalImgHeight ?>px;">
+            <div class="marker marker-original"><?= $originalHeavierSameResolution ? "⚓" : "" ?></div>
+            <div class="clear"></div>
           </div>
-          <div class="imageContainer dup">
-            <img src="<?= $dupImgUrl ?>" style="height: <?= $dupImgHeight ?>px;">
-            <p>
-              <?= $d["width"] ?>x<?= $d["height"] ?><br />
-              <?= $d["size"] ?><br />
-              <?= $displayDupPath ?>
-            </p>
-          </div>
-          <div class="action">Delete Duplicate</div>
-          <div class="clear"></div>
+          <p>
+            <?= $o["phash"] != $d["phash"] ? $o["phash"] : '' ?><br />
+            <?= $o["width"] ?>x<?= $o["height"] ?><br />
+            <?= $o["size"] ?><br />
+            <?= $displayOriginalPath ?>
+          </p>
         </div>
-    <?php endfor; ?>
-</div>
+        <div class="infoContainer dup">
+          <div class="imageContainer">
+            <div class="marker marker-dup"><?= $dupHeavierSameResolution ? "⚓" : "" ?></div>
+            <img src="<?= $dupImgUrl ?>" class="<?= $imgDupClass ?>" style="height: <?= $dupImgHeight ?>px;">
+            <div class="clear"></div>
+          </div>
+          <p>
+            <?= $o["phash"] != $d["phash"] ? $d["phash"] : '' ?><br />
+            <?= $d["width"] ?>x<?= $d["height"] ?><br />
+            <?= $d["size"] ?><br />
+            <?= $displayDupPath ?>
+          </p>
+        </div>
+        <div class="action">remove-dup</div>
+        <div class="clear"></div>
+        <!-- Hidden input to store action for this image -->
+        <input type="hidden" name="imageAction[<?= $item['to'] ?>]" value="remove-dup">
+      </div>
+    <?php } ?>
+    <!-- Submit button -->
+    <input type="submit" value="Submit Actions">
+  </div>
+</form>
 </body>
 </html>
 
