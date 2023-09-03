@@ -1,7 +1,7 @@
 <?php
 define('WIN_DIR', "F:\\media");
 define('LINUX_DIR', "/mnt/media");
-define('PAGE_SIZE', 5);
+define('PAGE_SIZE', 20);
 define('DEFAULT_THUMB_WIDTH', 200);
 define('SMALLER_THUMB_RATIO', 0.8);
 
@@ -18,10 +18,11 @@ function handleFileDeletion($path, $type, $destination = 'removed') {
       $destinationDir = '/mnt/media/archive';
     } elseif ($destination == 'nofoto') {
       $destinationDir = '/mnt/media/new-nofoto';
+    } elseif ($destination == 'other') {
+      $destinationDir = '/mnt/media/new-fotoother';
     } else {
       return "Invalid destination: " . $destination . "<br>";
     }
-
 
     // Получаем путь, который нужно сохранить
     $relativePath = str_replace(LINUX_DIR, '', $path);
@@ -131,10 +132,14 @@ if (isset($_POST['imageAction']) && is_array($_POST['imageAction'])) {
         $results[] = "Skipped " . $item['original']['real_path'] . "<br>";
         break;
       case 'remove-dup-nofoto':
-        // remove dup
-        // move original to nofoto directory
         $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['original']['real_path']));
         $results[] = handleFileDeletion($linuxPath, 'original', 'nofoto');
+        $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['dup']['real_path']));
+        $results[] = handleFileDeletion($linuxPath, 'dup');
+        break;
+      case 'remove-dup-other':
+        $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['original']['real_path']));
+        $results[] = handleFileDeletion($linuxPath, 'original', 'other');
         $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['dup']['real_path']));
         $results[] = handleFileDeletion($linuxPath, 'dup');
         break;
@@ -189,19 +194,38 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
         #duplicatesContainer img.smaller {
             width: <?= DEFAULT_THUMB_WIDTH * SMALLER_THUMB_RATIO ?>px;
         }
+
         #duplicatesContainer .remove-dup .dup img,
         #duplicatesContainer .remove-original .original img,
         #duplicatesContainer .remove-both .original img,
         #duplicatesContainer .remove-both .dup img {
             border-bottom: 5px solid #f00;
         }
+
         #duplicatesContainer .archive-both img {
             border-bottom: 5px solid yellow;
         }
+
         #duplicatesContainer .remove-dup .original img,
-                #duplicatesContainer .remove-original .dup img {
-                    border-bottom: 5px solid transparent;
-                }
+        #duplicatesContainer .remove-original .dup img {
+            border-bottom: 5px solid transparent;
+        }
+
+        #duplicatesContainer .remove-dup-nofoto .original img {
+            border-bottom: 5px solid #008;
+        }
+
+        #duplicatesContainer .remove-dup-nofoto .dup img {
+            border-color: #f00;
+        }
+
+        #duplicatesContainer .remove-dup-other .original img {
+            border-bottom: 5px solid #808;
+        }
+
+        #duplicatesContainer .remove-dup-other .dup img {
+            border-color: #f00;
+        }
 
         div.current {
             border-color: #eeffee;
@@ -225,7 +249,15 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
             let items = document.querySelectorAll('.item');
             let currentIndex = 0;
 
-            let actions = ['remove-original', 'remove-dup', 'remove-both', 'archive-both', 'skip', 'remove-dup-nofoto'];
+            let actions = [
+              'remove-original',
+              'remove-dup',
+              'remove-both',
+              'archive-both', // переместить оба файла в папку archive
+              'skip',
+              'remove-dup-nofoto', // удалить дубликат, переместить оригинал в nofoto
+              'remove-dup-other' // удалить дубликат, переместить оригинал в папку foto-other
+            ];
             //let currentAction = 1;
 
             // Update the hidden input value when action changes
@@ -277,7 +309,7 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
             }
 
             document.addEventListener('keydown', function(e) {
-                if (e.ctrlKey) {
+                if (!e.ctrlKey) {
                     switch (e.keyCode) {
                         case 38: // up arrow
                             if (currentIndex > 0) currentIndex--;
@@ -300,9 +332,6 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
                             e.preventDefault();
                             break;
 
-                    }
-                } else {
-                    switch (e.keyCode) {
                         case 79: // o
                             selectActionByActionType('remove-original');
                             e.preventDefault();
@@ -327,6 +356,11 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
                             selectActionByActionType('remove-dup-nofoto');
                             e.preventDefault();
                             return;
+                        case 84: // t
+                            selectActionByActionType('remove-dup-other');
+                            e.preventDefault();
+                            return;
+
                     }
                 }
             });
