@@ -1,7 +1,7 @@
 <?php
 define('WIN_DIR', "F:\\media");
 define('LINUX_DIR', "/mnt/media");
-define('PAGE_SIZE', 20);
+define('PAGE_SIZE', 40);
 define('DEFAULT_THUMB_WIDTH', 200);
 define('SMALLER_THUMB_RATIO', 0.8);
 
@@ -212,7 +212,7 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
         }
 
         #duplicatesContainer .remove-dup-nofoto .original img {
-            border-bottom: 5px solid #008;
+            border-bottom: 5px solid #08f;
         }
 
         #duplicatesContainer .remove-dup-nofoto .dup img {
@@ -375,6 +375,7 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
     </script>
 </head>
 <body>
+
 <form method="post" action="">
     <select name="data_area" onchange="this.form.submit();">
         <?php foreach ($data as $key => $value): ?>
@@ -382,6 +383,8 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
         <?php endforeach; ?>
     </select>
 </form>
+
+
 
 <form method="post" action="" id="imageActionsForm">
   <div id="duplicatesContainer">
@@ -429,8 +432,11 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
       $originalSize = filesize($linuxOriginalPath);
       $dupSize = filesize($linuxDupPath);
 
-      $displayOriginalPath = str_replace("/", "<br />", $o['full_path']);
-      $displayDupPath = str_replace("/", "<br />", $d['full_path']);
+      $displayOriginalPath = str_replace("/vt/new/", '', $o['full_path']);
+      $displayOriginalPath = str_replace("/vt/existing/", '', $displayOriginalPath);
+      $displayOriginalPath = str_replace("/", " ", $displayOriginalPath);
+      $displayDupPath = str_replace("/vt/new/", '', $o['full_path']);
+      $displayDupPath = str_replace("/", " ", $displayDupPath);
 
       $originalImgHeight = DEFAULT_THUMB_WIDTH * $o["height"] / $o["width"];
       if (!$originalImgHeight) {
@@ -478,10 +484,10 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
             <div class="clear"></div>
           </div>
           <p>
-            <?= $o["phash"] != $d["phash"] ? $o["phash"] : '' ?><br />
+            <?= $o["phash"] != $d["phash"] ? $o["phash"] . '<br />' : '' ?>
             <?= $o["width"] ?>x<?= $o["height"] ?><br />
             <?= $o["size"] ?><br />
-            <?= $displayOriginalPath ?>
+            <small><?= $displayOriginalPath ?></small>
           </p>
         </div>
         <div class="infoContainer dup">
@@ -491,10 +497,10 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
             <div class="clear"></div>
           </div>
           <p>
-            <?= $o["phash"] != $d["phash"] ? $d["phash"] : '' ?><br />
+            <?= $o["phash"] != $d["phash"] ? $d["phash"] . '<br />' : '' ?>
             <?= $d["width"] ?>x<?= $d["height"] ?><br />
             <?= $d["size"] ?><br />
-            <?= $displayDupPath ?>
+            <small><?= $displayDupPath ?></small>
           </p>
         </div>
         <div class="action">remove-dup</div>
@@ -509,6 +515,7 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
 </form>
 
 <div style="padding-top: 2em">
+  <p>items: <?= count($data[$selected_area]) ?>, skipped: <?= $allIterator ?></p>
   <p>CTRL + Up/Down - select image</p>
   <p>CTRL + Left/Right - change action</p>
 </div>
