@@ -11,7 +11,7 @@ function transformPathToURL($path) {
     return str_replace('\\', '/', str_replace(WIN_DIR, 'http://localhost:8000/?image=', $path));
 }
 
-function handleFileDeletion($path) {
+function handleFileDeletion($path, $type) {
     $destinationDir = '/mnt/media/removed';
 
     // Получаем путь, который нужно сохранить
@@ -25,16 +25,14 @@ function handleFileDeletion($path) {
     }
 
     if (!file_exists($path)) {
-      echo "File does not exist: " . $path . ", destination:" . $destinationPath . "<br>";
+      return "File does not exist: " . $path . ", destination:" . $destinationPath . "<br>";
     }
 
-    echo "Moved: " . $path . ", destination:" . $destinationPath . "<br>";
-        if (rename($path, $destinationPath)) {
-            echo "Moved: " . $path . " to " . $destinationPath;
-        } else {
-            echo "Error moving: " . $path . " to " . $destinationPath;
-        }
-
+    if (rename($path, $destinationPath)) {
+        return "Moved $type: " . $path . " to " . $destinationPath . "<br>";
+    } else {
+        return "Error moving $type: " . $path . " to " . $destinationPath . "<br>";
+    }
 }
 
 function handleImageDisplay($path) {
@@ -46,7 +44,6 @@ function handleImageDisplay($path) {
         readfile($cachePath);
         return;
     }
-
 
     if (file_exists($fullPath)) {
         $image = imagecreatefromjpeg($fullPath);
@@ -90,7 +87,7 @@ if (isset($_GET['image'])) {
 }
 
 $data = json_decode(file_get_contents("./actions.json"), true);
-
+$results = [];
 // Check if imageAction is set in POST data
 if (isset($_POST['imageAction']) && is_array($_POST['imageAction'])) {
   $processingActions = $_POST['imageAction'];
@@ -102,13 +99,18 @@ if (isset($_POST['imageAction']) && is_array($_POST['imageAction'])) {
     switch ($action) {
       case 'remove-original':
         $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['original']['real_path']));
-        $result = handleFileDeletion($linuxPath);
-        //                  echo $result . "<br>";
+        $results[] = handleFileDeletion($linuxPath, 'original');
         break;
       case 'remove-dup':
         $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['dup']['real_path']));
-        $result = handleFileDeletion($linuxPath);
+        $results[] = handleFileDeletion($linuxPath, 'dup');
 //                  echo $result . "<br>";
+        break;
+      case 'remove-both':
+        $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['original']['real_path']));
+        $results[] = handleFileDeletion($linuxPath, 'original');
+        $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['dup']['real_path']));
+        $results[] = handleFileDeletion($linuxPath, 'dup');
         break;
       default:
         echo "No action specified for " . $linuxPath . "<br>";
@@ -260,6 +262,13 @@ $max_entries = min(count($data[$selected_area]), PAGE_COUNT);
                     }
                 };
             });
+            // processing mouse clicks
+            items.forEach((item, index) => {
+                item.addEventListener('click', function(e) {
+                    currentIndex = index;
+                    selectCurrentItem();
+                });
+            });
         });
     </script>
 </head>
@@ -315,8 +324,8 @@ $max_entries = min(count($data[$selected_area]), PAGE_COUNT);
       $linuxDupPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $dupPath));
 
 
-      $originalSize = filesize($originalPath);
-      $dupSize = filesize($dupPath);
+      $originalSize = filesize($linuxOriginalPath);
+      $dupSize = filesize($linuxDupPath);
 
       $displayOriginalPath = str_replace("/", "<br />", $o['full_path']);
       $displayDupPath = str_replace("/", "<br />", $d['full_path']);
@@ -343,8 +352,8 @@ $max_entries = min(count($data[$selected_area]), PAGE_COUNT);
         $imgDupClass = "";
       }
 
-      $originalImageDetails = getimagesize($originalPath);
-      $dupImageDetails = getimagesize($dupPath);
+      $originalImageDetails = getimagesize($linuxOriginalPath);
+      $dupImageDetails = getimagesize($linuxDupPath);
 
       $originalImgUrl = transformPathToURL($o["real_path"]);
       $dupImgUrl = transformPathToURL($d["real_path"]);
@@ -396,6 +405,12 @@ $max_entries = min(count($data[$selected_area]), PAGE_COUNT);
     <input type="submit" value="Submit Actions">
   </div>
 </form>
+
+<div id="results">
+  <?php foreach ($results as $result): ?>
+    <?= $result ?>
+  <?php endforeach; ?>
+</div>
 </body>
 </html>
 
