@@ -1,7 +1,7 @@
 <?php
 define('WIN_DIR', "F:\\media");
 define('LINUX_DIR', "/mnt/media");
-define('PAGE_COUNT', 20);
+define('PAGE_SIZE', 5);
 define('DEFAULT_THUMB_WIDTH', 200);
 define('SMALLER_THUMB_RATIO', 0.8);
 
@@ -11,8 +11,15 @@ function transformPathToURL($path) {
     return str_replace('\\', '/', str_replace(WIN_DIR, 'http://localhost:8000/?image=', $path));
 }
 
-function handleFileDeletion($path, $type) {
-    $destinationDir = '/mnt/media/removed';
+function handleFileDeletion($path, $type, $destination = 'removed') {
+    if ($destination == 'removed') {
+      $destinationDir = '/mnt/media/removed';
+    } elseif ($destination == 'archive') {
+      $destinationDir = '/mnt/media/archive';
+    } else {
+      return "Invalid destination: " . $destination . "<br>";
+    }
+
 
     // Получаем путь, который нужно сохранить
     $relativePath = str_replace(LINUX_DIR, '', $path);
@@ -112,6 +119,12 @@ if (isset($_POST['imageAction']) && is_array($_POST['imageAction'])) {
         $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['dup']['real_path']));
         $results[] = handleFileDeletion($linuxPath, 'dup');
         break;
+      case 'archive-both':
+        $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['original']['real_path']));
+        $results[] = handleFileDeletion($linuxPath, 'original', 'archive');
+        $linuxPath = str_replace('\\', '/', str_replace(WIN_DIR, LINUX_DIR, $item['dup']['real_path']));
+        $results[] = handleFileDeletion($linuxPath, 'dup', 'archive');
+        break;
       default:
         echo "No action specified for " . $linuxPath . "<br>";
         break;
@@ -131,7 +144,7 @@ if (isset($_POST['data_area']) && array_key_exists($_POST['data_area'], $data)) 
     setcookie('selected_area', $selected_area, time() + (86400 * 30), "/"); // 86400 = 1 day
 }
 
-$max_entries = min(count($data[$selected_area]), PAGE_COUNT);
+$max_entries = min(count($data[$selected_area]), PAGE_SIZE);
 
 
 ?>
@@ -169,6 +182,9 @@ $max_entries = min(count($data[$selected_area]), PAGE_COUNT);
         #duplicatesContainer .remove-both .dup img {
             border-bottom: 5px solid #f00;
         }
+        #duplicatesContainer .archive-both img {
+            border-bottom: 5px solid yellow;
+        }
         #duplicatesContainer .remove-dup .original img,
                 #duplicatesContainer .remove-original .dup img {
                     border-bottom: 5px solid transparent;
@@ -196,7 +212,7 @@ $max_entries = min(count($data[$selected_area]), PAGE_COUNT);
             let items = document.querySelectorAll('.item');
             let currentIndex = 0;
 
-            let actions = ['remove-original', 'remove-dup', 'remove-both'];
+            let actions = ['remove-original', 'remove-dup', 'remove-both', 'archive-both'];
             //let currentAction = 1;
 
             // Update the hidden input value when action changes
