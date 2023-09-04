@@ -1,14 +1,14 @@
 <?php
 define('WIN_DIR', "F:\\media");
 define('LINUX_DIR', "/mnt/media");
-define('PAGE_SIZE', 40);
+define('PAGE_SIZE', 50);
 define('DEFAULT_THUMB_WIDTH', 200);
 define('SMALLER_THUMB_RATIO', 0.8);
 
 ini_set('memory_limit', '256M');
 
 function transformPathToURL($path) {
-    return str_replace('\\', '/', str_replace(WIN_DIR, 'http://localhost:8000/?image=', $path));
+    return str_replace('\\', '/', str_replace(WIN_DIR, '/?image=', $path));
 }
 
 function handleFileDeletion($path, $type, $destination = 'removed') {
@@ -435,7 +435,7 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
       $displayOriginalPath = str_replace("/vt/new/", '', $o['full_path']);
       $displayOriginalPath = str_replace("/vt/existing/", '', $displayOriginalPath);
       $displayOriginalPath = str_replace("/", " ", $displayOriginalPath);
-      $displayDupPath = str_replace("/vt/new/", '', $o['full_path']);
+      $displayDupPath = str_replace("/vt/new/", '', $d['full_path']);
       $displayDupPath = str_replace("/", " ", $displayDupPath);
 
       $originalImgHeight = DEFAULT_THUMB_WIDTH * $o["height"] / $o["width"];
