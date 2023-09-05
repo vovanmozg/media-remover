@@ -177,14 +177,30 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
             margin-bottom: 20px;
             border: 2px solid #eee;
             padding: 10px;
+            position: relative;
+//            --parent-left: 0px;
+//            left: var(--parent-left);
         }
+
         .clear {
           clear: both;
         }
+
         #duplicatesContainer .infoContainer {
             float: left;
             width: 300px;
+            position: relative;
+//            left: calc(0px - var(--parent-left));
         }
+
+        #duplicatesContainer .infoContainer.original {
+            border: 2px solid #000;
+        }
+
+        #duplicatesContainer .infoContainer.dup {
+
+        }
+
         #duplicatesContainer img {
             border: 1px solid #555;
             border-bottom-width: 5px;
@@ -193,6 +209,62 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
         }
         #duplicatesContainer img.smaller {
             width: <?= DEFAULT_THUMB_WIDTH * SMALLER_THUMB_RATIO ?>px;
+        }
+
+        #duplicatesContainer .remove-dup .infoContainer.original {
+            left: 0;
+        }
+
+        #duplicatesContainer .remove-dup .infoContainer.dup {
+            left: 0;
+        }
+
+        #duplicatesContainer .remove-original .infoContainer.original {
+            left: 300px;
+        }
+
+        #duplicatesContainer .remove-original .infoContainer.dup {
+            left: -300px;
+        }
+
+        #duplicatesContainer .remove-both .infoContainer.original {
+            left: 300px;
+        }
+
+        #duplicatesContainer .remove-both .infoContainer.dup {
+            left: 0;
+        }
+
+        #duplicatesContainer .archive-both .infoContainer.original {
+            left: 1200px;
+        }
+
+        #duplicatesContainer .archive-both .infoContainer.dup {
+            left: 900px;
+        }
+
+        #duplicatesContainer .skip .infoContainer.original {
+            left: 0;
+        }
+
+        #duplicatesContainer .skip .infoContainer.dup {
+            left: -300px;
+        }
+
+        #duplicatesContainer .remove-dup-nofoto .infoContainer.original {
+            left: 600px;
+        }
+
+        #duplicatesContainer .remove-dup-nofoto .infoContainer.dup {
+            left: 0;
+        }
+
+        #duplicatesContainer .remove-dup-other .infoContainer.original {
+            left: 900px;
+        }
+
+        #duplicatesContainer .remove-dup-other .infoContainer.dup {
+            left: 0;
         }
 
         #duplicatesContainer .remove-dup .dup img,
@@ -231,9 +303,11 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
             border-color: #eeffee;
             background-color: #eeffee;
         }
+
         div.remove-dup {
 
         }
+
         div.remove-original {
 
         }
