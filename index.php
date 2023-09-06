@@ -464,24 +464,38 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
   <div id="duplicatesContainer">
     <?php
 
+    // merge all items from all areas to one array
+    $allItems = [];
+    $data['skipped'] = [];
+    foreach ($data as $action_type => $subitems) {
+        foreach ($subitems as $subitem) {
+            $subitem['action_type'] = $action_type;
+            $allItems[] = $subitem;
+        }
+    }
+    usort($allItems, function($a, $b) {
+        //$aRatio = $a['original']['width'] / $a['original']['height'] . $a['original']['phash'];
+        //$bRatio = $b['from']['width'] / $b['from']['height'] . $b['original']['phash'];
+        //return strcmp($aRatio, $bRatio);
+        //return strcmp($a['original']['size'], $b['original']['size']);
+        return strcmp($a['original']['full_path'], $b['original']['full_path']);
+    });
+
+
     $allIterator = 0;
     $displayIterator = 0;
     while (true) {
 //       echo "alliterator: $allIterator, datalen: " . count($data[$selected_area]) . "<br>";
 //       echo "displayIterator: $displayIterator, max_entries: $max_entries<br>";
-      if ($allIterator >= count($data[$selected_area])) {
-
+      if ($allIterator >= count($allItems)) {
         break;
       }
 
       if ($displayIterator >= $max_entries) {
-
         break;
       }
 
-      $i = $allIterator;
-
-      $item = $data[$selected_area][$i];
+      $item = $allItems[$allIterator];
       $o = $item["original"];
       $d = array_merge($item["from"], $item["dup"]);
 
@@ -558,7 +572,8 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
             <div class="clear"></div>
           </div>
           <p>
-            <?= $o["phash"] != $d["phash"] ? $o["phash"] . '<br />' : '' ?>
+            <?= $item["action_type"] ?><br />
+            <?= true || $o["phash"] != $d["phash"] ? number_format($o["phash"], 0, '.', '') . '<br />' : '' ?>
             <?= $o["width"] ?>x<?= $o["height"] ?><br />
             <?= $o["size"] ?><br />
             <small><?= $displayOriginalPath ?></small>
@@ -571,7 +586,8 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
             <div class="clear"></div>
           </div>
           <p>
-            <?= $o["phash"] != $d["phash"] ? $d["phash"] . '<br />' : '' ?>
+            <?= $item["action_type"] ?><br />
+            <?= true || $o["phash"] != $d["phash"] ? number_format($o["phash"], 0, '.', '') . '<br />' : '' ?>
             <?= $d["width"] ?>x<?= $d["height"] ?><br />
             <?= $d["size"] ?><br />
             <small><?= $displayDupPath ?></small>
@@ -589,7 +605,7 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
 </form>
 
 <div style="padding-top: 2em">
-  <p>items: <?= count($data[$selected_area]) ?>, skipped: <?= $allIterator ?></p>
+  <p>items: <?= count($allItems) ?>, skipped: <?= $allIterator ?></p>
   <p>CTRL + Up/Down - select image</p>
   <p>CTRL + Left/Right - change action</p>
 </div>
@@ -599,6 +615,7 @@ $max_entries = min(count($data[$selected_area]), PAGE_SIZE);
     <?= $result ?>
   <?php endforeach; ?>
 </div>
+<pre><?php var_dump($_POST['imageAction']); ?></pre>
 </body>
 </html>
 
